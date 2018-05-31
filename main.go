@@ -1,101 +1,55 @@
 package main
 
 import (
-	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
+	"./entity"
+	"./postgres"
+
 	_ "github.com/lib/pq"
 )
 
-//Postgres is a PostgreSQL database
-type Postgres struct {
-	db *sql.DB
-}
-
-//User is type that contains user data
-type User struct {
-	ID    string
-	Email string
-	Name  string
-	Info  interface{}
-}
-
-func (u User) String() string {
-	return fmt.Sprintf("ID%v %v %v \t %v", u.ID, u.Name, u.Email, u.Info)
-}
-
-//NewDB returns new posgres DB with configuration conf
-func NewDB(conf string) (*Postgres, error) {
-	db, err := sql.Open("postgres", conf)
-	if err != nil {
-		return nil, err
-	}
-	return &Postgres{db: db}, nil
-}
-
-//Users returns all users in DB
-func (p Postgres) Users() ([]User, error) {
-	var users []User
-	rows, err := p.db.Query("SELECT * from users")
-	if err != nil {
-		return users, err
-	}
-	for rows.Next() {
-		var u User
-		var rawInfo []byte
-		err = rows.Scan(&u.ID, &u.Email, &u.Name, &rawInfo)
-		if err != nil {
-			return users, err
-		}
-		err = json.Unmarshal(rawInfo, &u.Info)
-		if err != nil {
-			return users, err
-		}
-		users = append(users, u)
-	}
-	return users, nil
-}
-
 //userHandler handles /user
-func userHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		p, err := NewDB("host=127.0.0.1 user=postgres dbname=postgres password=password sslmode=disable")
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-		var u []User
-		u, err = p.Users()
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-		for _, v := range u {
-			_, err = fmt.Fprintln(w, v)
+func userHandler(p *postgres.Postgres) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			var u []entity.User
+			u, err := p.Users()
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
+			}
+			for _, v := range u {
+				_, err = fmt.Fprintln(w, v)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+				}
 			}
 		}
 	}
 }
 
-func newRouter() http.Handler {
+func newRouter(p *postgres.Postgres) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/user", userHandler)
+	mux.HandleFunc("/user", userHandler(p))
 	return mux
 }
 
 func main() {
+	p, err := postgres.NewDB("host=127.0.0.1 user=postgres dbname=postgres password=password sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
 	s := http.Server{
 		Addr:         ":8080",
 		ReadTimeout:  time.Second * 10,
 		WriteTimeout: time.Second * 10,
-		Handler:      newRouter(),
+		Handler:      newRouter(p),
 	}
-	err := s.ListenAndServe()
+	err = s.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
 	}
