@@ -11,71 +11,84 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type user struct {
-	id    string
-	email string
-	name  string
-	info  interface{}
+//Postgres is a PostgreSQL database
+type Postgres struct {
+	db *sql.DB
 }
 
-func (u user) String() string {
-	return fmt.Sprintf("ID%v %v %v \t %v", u.id, u.name, u.email,
-		u.info)
+//User is type that contains user data
+type User struct {
+	ID    string
+	Email string
+	Name  string
+	Info  interface{}
 }
 
-var db *sql.DB
+func (u User) String() string {
+	return fmt.Sprintf("ID%v %v %v \t %v", u.ID, u.Name, u.Email, u.Info)
+}
 
-func initDB(conf string) {
-	var err error
-	db, err = sql.Open("postgres", conf)
+//NewDB returns new posgres DB with configuration conf
+func NewDB(conf string) (*Postgres, error) {
+	db, err := sql.Open("postgres", conf)
 	if err != nil {
-		log.Fatalf("Fatal to open db: %v", err)
+		return nil, err
 	}
+	return &Postgres{db: db}, nil
 }
 
-func getUsersFromDB() []user {
-	var users []user
-	rows, err := db.Query("SELECT * from users")
+//Users returns all users in DB
+func (p Postgres) Users() ([]User, error) {
+	var users []User
+	rows, err := p.db.Query("SELECT * from users")
 	if err != nil {
-		log.Fatalf("Fatal to read users from db: %v", err)
+		return users, err
 	}
 	for rows.Next() {
-		var id, email, name string
-		var info interface{}
-		var infoData []byte
-		err = rows.Scan(&id, &email, &name, &infoData)
+		var u User
+		var rawInfo []byte
+		err = rows.Scan(&u.ID, &u.Email, &u.Name, &rawInfo)
 		if err != nil {
-			log.Fatalf("Fatal to scan user: %v", err)
+			return users, err
 		}
-		err = json.Unmarshal(infoData, &info)
+		err = json.Unmarshal(rawInfo, &u.Info)
 		if err != nil {
-			log.Fatalf("Fatal to unmarshal info: %v", err)
+			return users, err
 		}
-		users = append(users, user{id: id, email: email, name: name, info: info})
+		users = append(users, u)
 	}
-	return users
+	return users, nil
 }
 
-//HandleGet handles get method
-func HandleGet(w http.ResponseWriter, r *http.Request) {
-	users := getUsersFromDB()
-	var err error
-	for _, v := range users {
-		_, err = fmt.Fprintln(w, v)
+//userHandler handles /user
+func userHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		p, err := NewDB("host=127.0.0.1 user=postgres dbname=postgres password=password sslmode=disable")
 		if err != nil {
-			log.Fatalf("Fatal to show users: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		var u []User
+		u, err = p.Users()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		for _, v := range u {
+			_, err = fmt.Fprintln(w, v)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
 		}
 	}
 }
 
 func newRouter() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/GET/user", HandleGet)
+	mux.HandleFunc("/user", userHandler)
 	return mux
 }
 
 func main() {
-	initDB("host=127.0.0.1 user=postgres dbname=postgres password=password sslmode=disable")
 	s := http.Server{
 		Addr:         ":8080",
 		ReadTimeout:  time.Second * 10,
