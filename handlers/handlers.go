@@ -28,7 +28,6 @@ func UserHandler(p entity.Database) http.HandlerFunc {
 //UserIDHandler handles GET/user/{id} method
 func UserIDHandler(p entity.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "HI")
 		vars := mux.Vars(r)
 		id := vars["id"]
 		u, err := p.GetUserByID(id)
