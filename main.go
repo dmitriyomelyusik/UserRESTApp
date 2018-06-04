@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"./handlers"
-	"./postgres"
+	"github.com/UserRESTApp/handlers"
+	"github.com/UserRESTApp/postgres"
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
@@ -58,10 +58,15 @@ func getEnvVars() map[string]string {
 	vars[PGHOST] = os.Getenv(PGHOST)
 	vars[DBNAME] = os.Getenv(DBNAME)
 	vars[SSLMODE] = os.Getenv(SSLMODE)
-	for _, value := range vars {
+	isOK := true
+	for key, value := range vars {
 		if value == "" {
-			panic("You didn't set all requirement environment variables!")
+			fmt.Printf("You didn't set environment variable: %v\n", key)
+			isOK = false
 		}
+	}
+	if !isOK {
+		panic("Set all environment variables!")
 	}
 	return vars
 }

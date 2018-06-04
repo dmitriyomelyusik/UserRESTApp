@@ -12,8 +12,8 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"."
-	"../postgres"
+	"github.com/UserRESTApp/handlers"
+	"github.com/UserRESTApp/postgres"
 
 	_ "github.com/lib/pq"
 )
@@ -22,6 +22,10 @@ var (
 	p  *postgres.Postgres
 	r  *mux.Router
 	ts *httptest.Server
+)
+
+const (
+	notFound = "Cannot found user with id "
 )
 
 func TestMain(m *testing.M) {
@@ -58,8 +62,8 @@ func TestUserHanlder(t *testing.T) {
 			break
 		}
 		str := strings.Fields(v)
-		if len(str) < 4 {
-			t.Fatal(str)
+		if str[0][0] != 'I' || str[0][1] != 'D' {
+			t.Fatal("Bad user perfomance")
 		}
 	}
 }
@@ -79,7 +83,7 @@ func TestUserIDHandler(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if string(got) != "" {
+		if string(got) != notFound+strconv.Itoa(i) {
 			str := strings.Fields(string(got))
 			if str[0] != "ID"+strconv.Itoa(i) {
 				t.Fatalf("Wrong id: expected ID%v, got %v", i, str[0])

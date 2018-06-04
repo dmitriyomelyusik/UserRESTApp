@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"."
+	"github.com/UserRESTApp/postgres"
 	_ "github.com/lib/pq"
 )
 
@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 func TestUsers(t *testing.T) {
 	u, err := p.Users()
 	if err != nil {
-		t.Fatalf("Cannot select any user: %v", err)
+		t.Fatalf("Cannot select any of users: %v", err)
 	}
 	for _, v := range u {
 		ID = append(ID, v.ID)
