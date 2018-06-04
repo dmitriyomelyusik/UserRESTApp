@@ -64,10 +64,12 @@ func main() {
 	conf := fmt.Sprintf("host=%v user=%v dbname=%v password=%v sslmode=%v", vars[PGHOST], vars[PGUSER], vars[DBNAME], vars[PGPASS], vars[SSLMODE])
 	p, err := postgres.NewDB(conf)
 	if err != nil {
+		fmt.Println("Fatal to open database. Check environment variables.")
 		panic(err)
 	}
 	err = p.DB.Ping()
 	if err != nil {
+		fmt.Println("Fatal to connet to database. Check environment variables.")
 		panic(err)
 	}
 	r := mux.NewRouter()
