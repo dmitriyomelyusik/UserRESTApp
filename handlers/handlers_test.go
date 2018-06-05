@@ -12,7 +12,8 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.com/UserRESTApp/handlers"
+	"github.com/UserRESTApp/controller"
+	. "github.com/UserRESTApp/handlers"
 	"github.com/UserRESTApp/postgres"
 
 	_ "github.com/lib/pq"
@@ -24,19 +25,13 @@ var (
 	ts *httptest.Server
 )
 
-const (
-	notFound = "Cannot found user with id "
-)
-
 func TestMain(m *testing.M) {
 	var err error
 	p, err = postgres.NewDB("host=127.0.0.1 user=postgres dbname=postgres password=password sslmode=disable")
 	if err != nil {
 		fmt.Printf("Cannot open database: %v", err)
 	}
-	r = mux.NewRouter()
-	r.HandleFunc("/user", handlers.UserHandler(p)).Methods("GET")
-	r.HandleFunc("/user/{id}", handlers.UserIDHandler(p)).Methods("GET")
+	r = NewRouter(Server{Controller: controller.User{DB: p}})
 	code := m.Run()
 	os.Exit(code)
 }
@@ -83,7 +78,7 @@ func TestUserIDHandler(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if string(got) != notFound+strconv.Itoa(i) {
+		if string(got) != NotFound+strconv.Itoa(i) {
 			str := strings.Fields(string(got))
 			if str[0] != "ID"+strconv.Itoa(i) {
 				t.Fatalf("Wrong id: expected ID%v, got %v", i, str[0])

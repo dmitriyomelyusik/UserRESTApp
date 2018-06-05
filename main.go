@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/UserRESTApp/controller"
 	"github.com/UserRESTApp/handlers"
 	"github.com/UserRESTApp/postgres"
 
-	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 )
 
@@ -36,9 +36,10 @@ func main() {
 		fmt.Println("Fatal to connet to database. Check environment variables.")
 		panic(err)
 	}
-	r := mux.NewRouter()
-	r.HandleFunc("/user", handlers.UserHandler(p)).Methods("GET")
-	r.HandleFunc("/user/{id}", handlers.UserIDHandler(p)).Methods("GET")
+
+	ctlUser := controller.User{DB: p}
+	server := handlers.Server{Controller: ctlUser}
+	r := handlers.NewRouter(server)
 	s := http.Server{
 		Addr:         ":8080",
 		ReadTimeout:  time.Second * 10,

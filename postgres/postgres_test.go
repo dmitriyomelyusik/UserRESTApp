@@ -5,18 +5,18 @@ import (
 	"os"
 	"testing"
 
-	"github.com/UserRESTApp/postgres"
+	. "github.com/UserRESTApp/postgres"
 	_ "github.com/lib/pq"
 )
 
 var (
-	p  *postgres.Postgres
+	p  *Postgres
 	ID []string
 )
 
 func TestMain(m *testing.M) {
 	var err error
-	p, err = postgres.NewDB("host=127.0.0.1 user=postgres dbname=postgres password=password sslmode=disable")
+	p, err = NewDB("host=127.0.0.1 user=postgres dbname=postgres password=password sslmode=disable")
 	if err != nil {
 		fmt.Printf("Cannot open database: %v", err)
 	}

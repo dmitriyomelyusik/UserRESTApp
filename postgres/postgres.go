@@ -3,9 +3,9 @@ package postgres
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 
 	"github.com/UserRESTApp/entity"
+	"github.com/UserRESTApp/errors"
 )
 
 //Postgres is a PostgreSQL database
@@ -13,30 +13,23 @@ type Postgres struct {
 	DB *sql.DB
 }
 
-const (
-	userNotFoundError  = "User is not found"
-	usersNotFoundError = "Users are not found"
-	unmarshalError     = "Cannot unmarshal data"
-	databaseQueryError = "Database query error"
-)
-
-//Users returns all users in DB
-func (p Postgres) Users() ([]entity.User, error) {
+//GetUsers returns all users in DB
+func (p Postgres) GetUsers() ([]entity.User, error) {
 	var users []entity.User
 	rows, err := p.DB.Query("SELECT * FROM users")
 	if err != nil {
-		return users, errors.New(databaseQueryError)
+		return users, errors.ErrDatabaseQuery
 	}
 	for rows.Next() {
 		var u entity.User
 		var rawInfo []byte
 		err = rows.Scan(&u.ID, &u.Email, &u.Name, &rawInfo)
 		if err != nil {
-			return users, errors.New(usersNotFoundError)
+			return users, errors.ErrUsersNotFound
 		}
 		err = json.Unmarshal(rawInfo, &u.Info)
 		if err != nil {
-			return users, errors.New(unmarshalError)
+			return users, errors.ErrUnmarshal
 		}
 		users = append(users, u)
 	}
@@ -51,10 +44,13 @@ func (p Postgres) GetUserByID(id string) (entity.User, error) {
 	err := row.Scan(&u.ID, &u.Email, &u.Name, &rawInfo)
 
 	if err != nil {
-		return u, errors.New(userNotFoundError)
+		return u, errors.ErrUserNotFound
 	}
 	err = json.Unmarshal(rawInfo, &u.Info)
-	return u, errors.New(unmarshalError)
+	if err != nil {
+		err = errors.ErrUnmarshal
+	}
+	return u, err
 }
 
 //NewDB returns new posgres DB with configuration conf
