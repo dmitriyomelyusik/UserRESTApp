@@ -70,6 +70,9 @@ func TestErrorsMessages(t *testing.T) {
 		decoder := json.NewDecoder(res.Body)
 		var code errors.ErrCode
 		err = decoder.Decode(&code)
+		if err != nil {
+			t.Fatal("Expected error in the body")
+		}
 		fmt.Println(v)
 		if code != errors.UserNotFound {
 			t.Fatalf("Wrong err code: expected %v, got %v", errors.UserNotFound, code)

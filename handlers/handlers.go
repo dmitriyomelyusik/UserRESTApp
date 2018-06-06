@@ -25,7 +25,7 @@ func (s Server) UserHandler() http.HandlerFunc {
 			return
 		}
 		for _, v := range u {
-			encoder.Encode(v)
+			_ = encoder.Encode(v)
 		}
 	}
 }
@@ -38,10 +38,10 @@ func (s Server) UserIDHandler() http.HandlerFunc {
 		id := vars["id"]
 		u, err := s.Controller.GetUserByID(id)
 		if err != (errors.Error{}) {
-			jsonError(encoder, errors.Error(err))
+			jsonError(encoder, err)
 			return
 		}
-		encoder.Encode(u)
+		_ = encoder.Encode(u)
 	}
 }
 
@@ -55,9 +55,9 @@ func NewRouter(s Server) *mux.Router {
 }
 
 func jsonError(encoder *json.Encoder, err errors.Error) {
-	encoder.Encode(err.Code)
-	encoder.Encode(err.Message)
+	_ = encoder.Encode(err.Code)
+	_ = encoder.Encode(err.Message)
 	if err.Info != nil {
-		encoder.Encode(err.Info)
+		_ = encoder.Encode(err.Info)
 	}
 }

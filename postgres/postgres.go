@@ -48,7 +48,7 @@ func (p Postgres) GetUserByID(id string) (entity.User, errors.Error) {
 	}
 	err = json.Unmarshal(rawInfo, &u.Info)
 	if err != nil {
-		err = errors.Error{Code: errors.UnmarshalError, Message: "Something was wrong in unmarshalling process"}
+		return u, errors.Error{Code: errors.UnmarshalError, Message: "Something was wrong in unmarshalling process"}
 	}
 	return u, errors.Error{}
 }

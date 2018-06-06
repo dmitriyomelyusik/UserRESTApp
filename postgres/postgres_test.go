@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/UserRESTApp/errors"
 	. "github.com/UserRESTApp/postgres"
 	_ "github.com/lib/pq"
 )
@@ -26,7 +27,7 @@ func TestMain(m *testing.M) {
 
 func TestUsers(t *testing.T) {
 	u, err := p.GetUsers()
-	if err != nil {
+	if err != (errors.Error{}) {
 		t.Fatalf("Cannot select any of users: %v", err)
 	}
 	for _, v := range u {
@@ -40,7 +41,7 @@ func TestUsers(t *testing.T) {
 func TestUserByID(t *testing.T) {
 	for _, id := range ID {
 		_, err := p.GetUserByID(id)
-		if err != nil {
+		if err != (errors.Error{}) {
 			t.Fatalf("Cannot get existing user: %v", err)
 		}
 	}

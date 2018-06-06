@@ -5,7 +5,9 @@ lint:
 	gometalinter .
 	gometalinter postgres/.
 	gometalinter entity/.
-	gometalinter handlers/.
+	gometalinter handlers/. --disable=gas
+	gometalinter controller/.
+	gometalinter errors/.
 
 test:
 	go test postgres/postgres_test.go
