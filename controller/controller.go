@@ -7,41 +7,24 @@ import (
 
 //Database is an interface that used in User controller to work with database data
 type Database interface {
-	GetUsers() ([]entity.User, error)
-	GetUserByID(string) (entity.User, error)
+	GetUsers() ([]entity.User, errors.Error)
+	GetUserByID(string) (entity.User, errors.Error)
 }
 
-//User is controlled
+//User controls database methods
 type User struct {
 	DB Database
 }
 
 //GetUsers is controlled method to get all users from database
-func (ctl User) GetUsers() ([]entity.User, error) {
-	users, err := ctl.DB.GetUsers()
-	checkError(&err)
-	return users, err
+func (ctl User) GetUsers() ([]entity.User, errors.Error) {
+	return ctl.DB.GetUsers()
 }
 
 //GetUserByID is controlled method to get user with specific id from database
-func (ctl User) GetUserByID(id string) (entity.User, error) {
+func (ctl User) GetUserByID(id string) (entity.User, errors.Error) {
 	if id == "" {
-		return entity.User{}, errors.ErrNotFound
+		return entity.User{}, errors.Error{Code: errors.NotFound, Message: "Invalid id"}
 	}
-	user, err := ctl.DB.GetUserByID(id)
-	checkError(&err)
-	return user, err
-}
-
-func checkError(err *error) {
-	switch *err {
-	case errors.ErrDatabaseQuery:
-		*err = errors.ErrInternalServer
-	case errors.ErrUnmarshal:
-		*err = errors.ErrInternalServer
-	case errors.ErrUsersNotFound:
-		*err = errors.ErrInternalServer
-	case errors.ErrUserNotFound:
-		*err = errors.ErrNotFound
-	}
+	return ctl.DB.GetUserByID(id)
 }

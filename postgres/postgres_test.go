@@ -25,11 +25,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestUsers(t *testing.T) {
-	u, err := p.Users()
+	u, err := p.GetUsers()
 	if err != nil {
 		t.Fatalf("Cannot select any of users: %v", err)
 	}
 	for _, v := range u {
+		if v.ID == "" {
+			t.Fatalf("ID must be not nil")
+		}
 		ID = append(ID, v.ID)
 	}
 }

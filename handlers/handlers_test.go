@@ -1,18 +1,18 @@
 package handlers_test
 
 import (
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/gorilla/mux"
 
 	"github.com/UserRESTApp/controller"
+	"github.com/UserRESTApp/entity"
+	"github.com/UserRESTApp/errors"
 	. "github.com/UserRESTApp/handlers"
 	"github.com/UserRESTApp/postgres"
 
@@ -45,45 +45,34 @@ func TestUserHanlder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	data := strings.Split(string(got), "\n")
-
-	for i, v := range data {
-		if i == len(data)-1 {
-			break
-		}
-		str := strings.Fields(v)
-		if str[0][0] != 'I' || str[0][1] != 'D' {
+	decoder := json.NewDecoder(res.Body)
+	var user entity.User
+	for decoder.More() {
+		err := decoder.Decode(&user)
+		if err != nil {
 			t.Fatal("Bad user perfomance")
 		}
 	}
 }
 
-func TestUserIDHandler(t *testing.T) {
+func TestErrorsMessages(t *testing.T) {
 	ts = httptest.NewServer(r)
 	defer ts.Close()
 
-	for i := 1; i <= 50; i++ {
-		res, err := http.Get(ts.URL + "/user/" + strconv.Itoa(i))
+	id := []string{"@-1", "@-2", "@-3", "@@@"}
+
+	for _, v := range id {
+		res, err := http.Get(ts.URL + "/user/" + v)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		got, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if string(got) != NotFound+strconv.Itoa(i) {
-			str := strings.Fields(string(got))
-			if str[0] != "ID"+strconv.Itoa(i) {
-				t.Fatalf("Wrong id: expected ID%v, got %v", i, str[0])
-			}
+		decoder := json.NewDecoder(res.Body)
+		var code errors.ErrCode
+		err = decoder.Decode(&code)
+		fmt.Println(v)
+		if code != errors.UserNotFound {
+			t.Fatalf("Wrong err code: expected %v, got %v", errors.UserNotFound, code)
 		}
 	}
-
 }

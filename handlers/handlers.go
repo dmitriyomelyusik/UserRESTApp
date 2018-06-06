@@ -1,18 +1,13 @@
 package handlers
 
 import (
-	"fmt"
+	"encoding/json"
 	"net/http"
 
 	"github.com/UserRESTApp/controller"
 	"github.com/UserRESTApp/errors"
 
 	"github.com/gorilla/mux"
-)
-
-//Response message when user wasn't found
-const (
-	NotFound = "Cannot found user with id "
 )
 
 //Server uses controller methods to work with them together with http methods
@@ -23,17 +18,14 @@ type Server struct {
 //UserHandler handles GET/user method
 func (s Server) UserHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		encoder := json.NewEncoder(w)
 		u, err := s.Controller.GetUsers()
-		if err != nil {
-			occuredError(err, w, "")
+		if err != (errors.Error{}) {
+			jsonError(encoder, err)
 			return
 		}
 		for _, v := range u {
-			_, err = fmt.Fprintln(w, v)
-			if err != nil {
-				occuredError(err, w, "")
-				return
-			}
+			encoder.Encode(v)
 		}
 	}
 }
@@ -41,18 +33,15 @@ func (s Server) UserHandler() http.HandlerFunc {
 //UserIDHandler handles GET/user/{id} method
 func (s Server) UserIDHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		encoder := json.NewEncoder(w)
 		vars := mux.Vars(r)
 		id := vars["id"]
 		u, err := s.Controller.GetUserByID(id)
-		if err != nil {
-			occuredError(err, w, id)
+		if err != (errors.Error{}) {
+			jsonError(encoder, errors.Error(err))
 			return
 		}
-		_, err = fmt.Fprintln(w, u)
-		if err != nil {
-			occuredError(err, w, id)
-			return
-		}
+		encoder.Encode(u)
 	}
 }
 
@@ -65,20 +54,10 @@ func NewRouter(s Server) *mux.Router {
 	return r
 }
 
-func occuredError(err error, w http.ResponseWriter, id string) {
-	switch err {
-	case errors.ErrNotFound:
-		w.WriteHeader(http.StatusNotFound)
-		_, err = w.Write([]byte(fmt.Sprintf("%v %v", NotFound, id)))
-		if err != nil {
-			fmt.Println(err)
-		}
-	default:
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte(fmt.Sprint(err)))
-		if err != nil {
-			fmt.Println(err)
-		}
-
+func jsonError(encoder *json.Encoder, err errors.Error) {
+	encoder.Encode(err.Code)
+	encoder.Encode(err.Message)
+	if err.Info != nil {
+		encoder.Encode(err.Info)
 	}
 }
