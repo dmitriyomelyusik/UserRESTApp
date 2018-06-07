@@ -3,12 +3,11 @@ package handlers_test
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
-
-	"github.com/gorilla/mux"
 
 	"github.com/UserRESTApp/controller"
 	"github.com/UserRESTApp/entity"
@@ -20,27 +19,23 @@ import (
 )
 
 var (
-	p  *postgres.Postgres
-	r  *mux.Router
 	ts *httptest.Server
 )
 
 func TestMain(m *testing.M) {
-	var err error
-	p, err = postgres.NewDB("host=127.0.0.1 user=postgres dbname=postgres password=password sslmode=disable")
+	p, err := postgres.NewDB("host=127.0.0.1 user=postgres dbname=postgres password=password sslmode=disable")
 	if err != nil {
-		fmt.Printf("Cannot open database: %v", err)
+		log.Fatalf("Cannot open database: %v", err)
 	}
-	r = NewRouter(Server{Controller: controller.User{DB: p}})
+	r := NewRouter(Server{Controller: controller.User{DB: p}})
+	ts = httptest.NewServer(r)
+	defer ts.Close()
 	code := m.Run()
 	os.Exit(code)
 }
 
 func TestUserHanlder(t *testing.T) {
-	ts = httptest.NewServer(r)
-	defer ts.Close()
-
-	res, err := http.Get(ts.URL + "/user")
+	res, err := http.Get(ts.URL + "/user/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,11 +51,7 @@ func TestUserHanlder(t *testing.T) {
 }
 
 func TestErrorsMessages(t *testing.T) {
-	ts = httptest.NewServer(r)
-	defer ts.Close()
-
 	id := []string{"@-1", "@-2", "@-3", "@@@"}
-
 	for _, v := range id {
 		res, err := http.Get(ts.URL + "/user/" + v)
 		if err != nil {
@@ -68,14 +59,14 @@ func TestErrorsMessages(t *testing.T) {
 		}
 
 		decoder := json.NewDecoder(res.Body)
-		var code errors.ErrCode
-		err = decoder.Decode(&code)
+		var myErr errors.Error
+		err = decoder.Decode(&myErr)
 		if err != nil {
 			t.Fatal("Expected error in the body")
 		}
 		fmt.Println(v)
-		if code != errors.UserNotFound {
-			t.Fatalf("Wrong err code: expected %v, got %v", errors.UserNotFound, code)
+		if myErr.Code != errors.UserNotFound {
+			t.Fatalf("Wrong err code: expected %v, got %v", errors.UserNotFound, myErr.Code)
 		}
 	}
 }

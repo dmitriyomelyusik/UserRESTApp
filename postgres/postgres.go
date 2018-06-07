@@ -3,6 +3,7 @@ package postgres
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 
 	"github.com/UserRESTApp/entity"
 	"github.com/UserRESTApp/errors"
@@ -14,7 +15,7 @@ type Postgres struct {
 }
 
 //GetUsers returns all users in DB
-func (p Postgres) GetUsers() ([]entity.User, errors.Error) {
+func (p Postgres) GetUsers() ([]entity.User, error) {
 	var users []entity.User
 	rows, err := p.DB.Query("SELECT * FROM users")
 	if err != nil {
@@ -33,24 +34,43 @@ func (p Postgres) GetUsers() ([]entity.User, errors.Error) {
 		}
 		users = append(users, u)
 	}
-	return users, errors.Error{}
+	return users, err
 }
 
 //GetUserByID returns user from DB with selected ID
-func (p Postgres) GetUserByID(id string) (entity.User, errors.Error) {
+func (p Postgres) GetUserByID(id string) (entity.User, error) {
 	var u entity.User
 	row := p.DB.QueryRow("SELECT * FROM users WHERE id=$1", id)
 	var rawInfo []byte
 	err := row.Scan(&u.ID, &u.Email, &u.Name, &rawInfo)
 
 	if err != nil {
-		return u, errors.Error{Code: errors.UserNotFound, Message: "Cannot find user in database with that id"}
+		return u, errors.Error{Code: errors.UserNotFound, Message: fmt.Sprintf("Cannot find user in database with id %v", id)}
 	}
 	err = json.Unmarshal(rawInfo, &u.Info)
 	if err != nil {
 		return u, errors.Error{Code: errors.UnmarshalError, Message: "Something was wrong in unmarshalling process"}
 	}
-	return u, errors.Error{}
+	return u, err
+}
+
+//PutUserByID eddits user by his id
+func (p Postgres) PutUserByID(user entity.User) error {
+	_, err := p.DB.Exec("UPDATE users SET email=$1, name=$2, info=$3 WHERE id=$4", user.Email, user.Name, user.Info, user.ID)
+	return err
+}
+
+//PostUser adds new user in database
+func (p Postgres) PostUser(user entity.User) error {
+	fmt.Println(user)
+	_, err := p.DB.Exec("INSERT INTO users (id, email, name, info) VALUES ($1, $2, $3, $4)", user.ID, user.Email, user.Name, user.Info)
+	return err
+}
+
+//DeleteUserByID deletes user by id
+func (p Postgres) DeleteUserByID(id string) error {
+	_, err := p.DB.Exec("DELETE FROM users WHERE id=$1", id)
+	return err
 }
 
 //NewDB returns new posgres DB with configuration conf
