@@ -12,3 +12,12 @@ lint:
 test:
 	go test postgres/postgres_test.go
 	go test handlers/handlers_test.go
+
+dockerrun:
+	docker run --rm -p 8080:8080 restapp
+
+dockerbuild:
+	docker build -t restapp .
+
+build:
+	go build -o bin/main main.go

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/UserRESTApp/entity"
@@ -25,9 +26,7 @@ func (s Server) UserHandler() http.HandlerFunc {
 			jsonError(w, err)
 			return
 		}
-		for _, v := range u {
-			jsonResponse(w, v)
-		}
+		jsonResponse(w, u)
 	}
 }
 
@@ -49,14 +48,13 @@ func (s Server) UserIDHandler() http.HandlerFunc {
 func (s Server) PostUserHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var u entity.User
-		err := json.NewDecoder(r.Body).Decode(&u)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 			jsonResponse(w, err)
 		}
-		err = s.Controller.PostUser(u)
-		if err != nil {
+		if err := s.Controller.PostUser(u); err != nil {
 			jsonError(w, err)
 		}
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -64,16 +62,15 @@ func (s Server) PostUserHandler() http.HandlerFunc {
 func (s Server) PutUserByIDHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var u entity.User
-		err := json.NewDecoder(r.Body).Decode(&u)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 			jsonResponse(w, err)
 		}
 		vars := mux.Vars(r)
-		id := vars["id"]
-		err = s.Controller.PutUserByID(u, id)
-		if err != nil {
+		u.ID = vars["id"]
+		if err := s.Controller.PutUserByID(u); err != nil {
 			jsonError(w, err)
 		}
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -82,10 +79,26 @@ func (s Server) DeleteUserByIDHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		id := vars["id"]
-		err := s.Controller.DeleteUserByID(id)
-		if err != nil {
+		if err := s.Controller.DeleteUserByID(id); err != nil {
 			jsonError(w, err)
 		}
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+//PatchUserByIDHandler handles PATCH /user/{id} method
+func (s Server) PatchUserByIDHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		id := vars["id"]
+		changes := make(map[string]interface{})
+		if err := json.NewDecoder(r.Body).Decode(&changes); err != nil {
+			jsonError(w, err)
+		}
+		if err := s.Controller.PatchUserByID(changes, id); err != nil {
+			jsonError(w, err)
+		}
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -97,6 +110,7 @@ func NewRouter(s Server) *mux.Router {
 	r.HandleFunc("/user/", s.PostUserHandler()).Methods("POST")
 	r.HandleFunc("/user/{id}", s.PutUserByIDHandler()).Methods("PUT")
 	r.HandleFunc("/user/{id}", s.DeleteUserByIDHandler()).Methods("DELETE")
+	r.HandleFunc("/user/{id}", s.PatchUserByIDHandler()).Methods("PATCH")
 	return r
 }
 
@@ -123,5 +137,7 @@ func jsonError(w http.ResponseWriter, err error) {
 
 func jsonResponse(w http.ResponseWriter, data interface{}) {
 	encoder := json.NewEncoder(w)
-	_ = encoder.Encode(data)
+	if err := encoder.Encode(data); err != nil {
+		log.Println(err)
+	}
 }

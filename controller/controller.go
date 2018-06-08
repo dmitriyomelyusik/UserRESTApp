@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"fmt"
+
 	"github.com/UserRESTApp/entity"
 	"github.com/UserRESTApp/errors"
 )
@@ -12,6 +14,7 @@ type Database interface {
 	PostUser(entity.User) error
 	PutUserByID(entity.User) error
 	DeleteUserByID(string) error
+	PatchUserByID(map[string]interface{}, string) error
 }
 
 //User controls database methods
@@ -49,10 +52,7 @@ func (ctl User) PostUser(user entity.User) error {
 }
 
 //PutUserByID is controlled method to change user info by its id
-func (ctl User) PutUserByID(user entity.User, id string) error {
-	if id != user.ID {
-		return errors.Error{Code: errors.NotFound, Message: "User has invalid id."}
-	}
+func (ctl User) PutUserByID(user entity.User) error {
 	u, err := ctl.DB.GetUserByID(user.ID)
 	if u == (entity.User{}) {
 		return ctl.PostUser(user)
@@ -65,9 +65,25 @@ func (ctl User) PutUserByID(user entity.User, id string) error {
 
 //DeleteUserByID is controlled method to delete user by its id
 func (ctl User) DeleteUserByID(id string) error {
-	_, err := ctl.DB.GetUserByID(id)
-	if err != nil {
+	if _, err := ctl.DB.GetUserByID(id); err != nil {
 		return err
 	}
 	return ctl.DB.DeleteUserByID(id)
+}
+
+//PatchUserByID is controlled method to patch user by its id with a set of instructions
+func (ctl User) PatchUserByID(changes map[string]interface{}, id string) error {
+	if _, err := ctl.DB.GetUserByID(id); err != nil {
+		return err
+	}
+	for key := range changes {
+		if key == "Name" || key == "Email" || key == "Info" {
+			continue
+		}
+		return errors.Error{Code: errors.UserFieldsError, Message: fmt.Sprintf("Invalid user field: %v.", key)}
+	}
+	if len(changes) == 0 {
+		return errors.Error{Code: errors.UserFieldsError, Message: "No data to change."}
+	}
+	return ctl.DB.PatchUserByID(changes, id)
 }

@@ -28,9 +28,11 @@ func (p Postgres) GetUsers() ([]entity.User, error) {
 		if err != nil {
 			return users, errors.Error{Code: errors.UsersNotFound, Message: "Database didn't return users"}
 		}
-		err = json.Unmarshal(rawInfo, &u.Info)
-		if err != nil {
-			return users, errors.Error{Code: errors.UnmarshalError, Message: "Something was wrong in unmarshalling process"}
+		if len(rawInfo) != 0 {
+			err = json.Unmarshal(rawInfo, &u.Info)
+			if err != nil {
+				return users, errors.Error{Code: errors.UnmarshalError, Message: "Something was wrong in unmarshalling process"}
+			}
 		}
 		users = append(users, u)
 	}
@@ -47,9 +49,11 @@ func (p Postgres) GetUserByID(id string) (entity.User, error) {
 	if err != nil {
 		return u, errors.Error{Code: errors.UserNotFound, Message: fmt.Sprintf("Cannot find user in database with id %v", id)}
 	}
-	err = json.Unmarshal(rawInfo, &u.Info)
-	if err != nil {
-		return u, errors.Error{Code: errors.UnmarshalError, Message: "Something was wrong in unmarshalling process"}
+	if len(rawInfo) != 0 {
+		err = json.Unmarshal(rawInfo, &u.Info)
+		if err != nil {
+			return u, errors.Error{Code: errors.UnmarshalError, Message: "Something was wrong in unmarshalling process"}
+		}
 	}
 	return u, err
 }
@@ -62,7 +66,6 @@ func (p Postgres) PutUserByID(user entity.User) error {
 
 //PostUser adds new user in database
 func (p Postgres) PostUser(user entity.User) error {
-	fmt.Println(user)
 	_, err := p.DB.Exec("INSERT INTO users (id, email, name, info) VALUES ($1, $2, $3, $4)", user.ID, user.Email, user.Name, user.Info)
 	return err
 }
@@ -70,6 +73,18 @@ func (p Postgres) PostUser(user entity.User) error {
 //DeleteUserByID deletes user by id
 func (p Postgres) DeleteUserByID(id string) error {
 	_, err := p.DB.Exec("DELETE FROM users WHERE id=$1", id)
+	return err
+}
+
+//PatchUserByID pathes modified user fields
+func (p Postgres) PatchUserByID(changes map[string]interface{}, id string) error {
+	var query = "UPDATE users SET "
+	for key, value := range changes {
+		query += fmt.Sprintf("%v='%v', ", key, value)
+	}
+	query = query[:len(query)-2]
+	query += fmt.Sprintf(" WHERE id='%v'", id)
+	_, err := p.DB.Exec(query)
 	return err
 }
 

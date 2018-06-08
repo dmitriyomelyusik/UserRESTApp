@@ -16,24 +16,24 @@ import (
 
 //Environment variables that needs to open database
 const (
-	PGHOST  = "PGHOST"
 	DBNAME  = "DBNAME"
 	PGUSER  = "PGUSER"
 	PGPASS  = "PGPASS"
+	PGHOST  = "PGHOST"
 	SSLMODE = "SSLMODE"
 )
 
 func main() {
 	vars := getEnvVars()
-	conf := fmt.Sprintf("host=%v user=%v dbname=%v password=%v sslmode=%v", vars[PGHOST], vars[PGUSER], vars[DBNAME], vars[PGPASS], vars[SSLMODE])
+	conf := fmt.Sprintf("user=%v dbname=%v password=%v sslmode=%v host=%v", vars[PGUSER], vars[DBNAME], vars[PGPASS], vars[SSLMODE], vars[PGHOST])
 	p, err := postgres.NewDB(conf)
 	if err != nil {
-		fmt.Println("Fatal to open database. Check environment variables.")
+		fmt.Println("Fatal to open database.")
 		panic(err)
 	}
 	err = p.DB.Ping()
 	if err != nil {
-		fmt.Println("Fatal to connet to database. Check environment variables.")
+		fmt.Println("Fatal to connet to database.")
 		panic(err)
 	}
 
@@ -56,8 +56,8 @@ func getEnvVars() map[string]string {
 	vars := make(map[string]string)
 	vars[PGUSER] = os.Getenv(PGUSER)
 	vars[PGPASS] = os.Getenv(PGPASS)
-	vars[PGHOST] = os.Getenv(PGHOST)
 	vars[DBNAME] = os.Getenv(DBNAME)
+	vars[PGHOST] = os.Getenv(PGHOST)
 	vars[SSLMODE] = os.Getenv(SSLMODE)
 	isOK := true
 	for key, value := range vars {

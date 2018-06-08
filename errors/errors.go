@@ -20,6 +20,7 @@ const (
 	DatabaseQueryError ErrCode = "DatabaseQueryError"
 	UserExists         ErrCode = "UserExists"
 	NotFound           ErrCode = "NotFound"
+	UserFieldsError    ErrCode = "UserFieldsError"
 )
 
 func (e Error) Error() string {
