@@ -14,7 +14,7 @@ test:
 	go test handlers/handlers_test.go
 
 dockerrun:
-	docker run --rm -p 8080:8080 restapp
+	docker run --rm --name restapp -p 8080:8080 --net=host restapp
 
 dockerbuild:
 	docker build -t restapp .

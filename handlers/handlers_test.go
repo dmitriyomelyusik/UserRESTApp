@@ -1,10 +1,8 @@
-package handlers_test
+// Package handlers_test has a set of tests needed to check correctness of wroten handlers.
+package handlers
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -14,8 +12,8 @@ import (
 	"github.com/UserRESTApp/controller"
 	"github.com/UserRESTApp/entity"
 	"github.com/UserRESTApp/errors"
-	. "github.com/UserRESTApp/handlers"
 	"github.com/UserRESTApp/postgres"
+	"github.com/gavv/httpexpect"
 
 	_ "github.com/lib/pq"
 )
@@ -36,149 +34,126 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestUserHanlder(t *testing.T) {
-	res, err := http.Get(ts.URL + "/user/")
-	if err != nil {
-		t.Fatal(err)
+func TestHandlers_GetHandler(t *testing.T) {
+	users := []entity.User{
+		{Name: "gethandler_test1", Email: "gethandler_test1", Info: "gethandler_test1"},
+		{Name: "gethandler_test2", Email: "gethandler_test2", Info: "gethandler_test2"},
+		{Name: "gethandler_test3", Email: "gethandler_test3", Info: "gethandler_test3"},
 	}
-	decoder := json.NewDecoder(res.Body)
-	var users []entity.User
-	err = decoder.Decode(&users)
-	if err != nil {
-		t.Fatal("Bad user perfomance")
-	}
-}
-
-func TestErrorsMessages(t *testing.T) {
-	id := []string{"@-1", "@-2", "@-3", "@@@"}
-	for _, v := range id {
-		res, err := http.Get(ts.URL + "/user/" + v)
+	e := httpexpect.New(t, ts.URL)
+	var userIDs []string
+	for i := range users {
+		rawID := e.POST("/user/").WithJSON(users[i]).Expect().Status(http.StatusOK).Body().Raw()
+		var id string
+		err := json.Unmarshal([]byte(rawID), &id)
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		decoder := json.NewDecoder(res.Body)
-		var myErr errors.Error
-		err = decoder.Decode(&myErr)
+		userIDs = append(userIDs, id)
+		users[i].ID = id
+	}
+	for i := range users {
+		u, err := json.Marshal(users[i])
 		if err != nil {
-			t.Fatal("Expected error in the body")
+			t.Fatal(err)
 		}
-		if myErr.Code != errors.UserNotFound {
-			t.Fatalf("Wrong err code: expected %v, got %v", errors.UserNotFound, myErr.Code)
+		e.GET("/user/").Expect().Status(http.StatusOK).Body().Contains(string(u))
+	}
+	e.GET("/user").Expect().Status(http.StatusNotFound)
+	for i := range userIDs {
+		e.DELETE("/user/" + userIDs[i]).Expect().Status(http.StatusOK)
+	}
+}
+
+func TestHandlers_GetIDHandler(t *testing.T) {
+	users := []entity.User{
+		{Name: "getidhandler_test1", Email: "getidhandler_test1", Info: "getidhandler_test1"},
+		{Name: "getidhandler_test2", Email: "getidhandler_test2", Info: "getidhandler_test2"},
+		{Name: "getidhandler_test3", Email: "getidhandler_test3", Info: "getidhandler_test3"},
+	}
+	e := httpexpect.New(t, ts.URL)
+	var userIDs []string
+	for i := range users {
+		rawID := e.POST("/user/").WithJSON(users[i]).Expect().Status(http.StatusOK).Body().Raw()
+		var id string
+		err := json.Unmarshal([]byte(rawID), &id)
+		if err != nil {
+			t.Fatal(err)
 		}
+		userIDs = append(userIDs, id)
+		users[i].ID = id
+	}
+	for i := range users {
+		u, err := json.Marshal(users[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.GET("/user/" + userIDs[i]).Expect().Status(http.StatusOK).Body().Equal(string(u) + "\n")
+	}
+	e.GET("/user/getidhandler_wrongID").Expect().Status(http.StatusNotFound)
+	for i := range userIDs {
+		e.DELETE("/user/" + userIDs[i]).Expect().Status(http.StatusOK)
 	}
 }
 
-func TestPostUser(t *testing.T) {
-	r := bytes.NewReader([]byte(`{"Name":"test","Email":"test","ID":"test","Info":"\"test\""}`))
-	req, err := http.NewRequest(http.MethodPost, ts.URL+"/user/", r)
-	if err != nil {
-		t.Fatal(err)
+func TestHandlers_DeleteHandler(t *testing.T) {
+	users := []entity.User{
+		{Name: "deletehandler_test1", Email: "deletehandler_test1", Info: "deletehandler_test1"},
+		{Name: "deletehandler_test2", Email: "deletehandler_test2", Info: "deletehandler_test2"},
+		{Name: "deletehandler_test3", Email: "deletehandler_test3", Info: "deletehandler_test3"},
 	}
-	client := http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		t.Fatal(err)
+	e := httpexpect.New(t, ts.URL)
+	var userIDs []string
+	for i := range users {
+		rawID := e.POST("/user/").WithJSON(users[i]).Expect().Status(http.StatusOK).Body().Raw()
+		var id string
+		err := json.Unmarshal([]byte(rawID), &id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		userIDs = append(userIDs, id)
+		users[i].ID = id
 	}
-	data, err := ioutil.ReadAll(res.Body)
-	fmt.Println(string(data))
-	if err != nil {
-		t.Fatal(err)
+	for i := range userIDs {
+		e.DELETE("/user/" + userIDs[i]).Expect().Status(http.StatusOK)
 	}
-	if res.StatusCode != http.StatusOK {
-		t.Fatal("Cannot post user")
+	wrongIDs := []string{
+		"deletehandler_wrongID1",
+		"deletehandler_wrongID2",
+		"deletehandler_wrongID3",
+		"deletehandler_wrongID4",
+		"deletehandler_wrongID5",
 	}
-	res, err = http.Get(ts.URL + "/user/test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var u entity.User
-	err = json.NewDecoder(res.Body).Decode(&u)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if u.Name != "test" || u.Email != "test" || u.ID != "test" || u.Info != "test" {
-		t.Fatalf("Cannot post user %s", u)
-	}
-}
-
-func TestPutUser(t *testing.T) {
-	r := bytes.NewReader([]byte(`{"Name":"test2","Email":"test2","ID":"test","Info":"\"test2\""}`))
-	req, err := http.NewRequest(http.MethodPut, ts.URL+"/user/test", r)
-	if err != nil {
-		t.Fatal(err)
-	}
-	client := http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.StatusCode != http.StatusOK {
-		t.Fatal("Cannot put user")
-	}
-	res, err = http.Get(ts.URL + "/user/test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var u entity.User
-	err = json.NewDecoder(res.Body).Decode(&u)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if u.Name != "test2" || u.Email != "test2" || u.ID != "test" || u.Info != "test2" {
-		t.Fatalf("Cannot put user %s", u)
+	for i := range wrongIDs {
+		myErr := errors.Error{Code: errors.UserNotFound, Message: "cannot find user in database with id " + wrongIDs[i]}
+		b, err := json.Marshal(myErr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.DELETE("/user/" + wrongIDs[i]).Expect().Status(http.StatusNotFound).Body().Equal(string(b) + "\n")
 	}
 }
 
-func TestPatchUser(t *testing.T) {
-	r := bytes.NewReader([]byte(`{"Name":"test3"}`))
-	req, err := http.NewRequest(http.MethodPatch, ts.URL+"/user/test", r)
-	if err != nil {
-		t.Fatal(err)
+func TestHandlers_CreateHandler(t *testing.T) {
+	users := []entity.User{
+		{Name: "createhandler_test1", Email: "createhandler_test1", Info: "createhandler_test1"},
+		{Name: "createhandler_test2", Email: "createhandler_test2", Info: "createhandler_test2"},
+		{Name: "createhandler_test3", Email: "createhandler_test3", Info: "createhandler_test3"},
 	}
-	client := http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		t.Fatal(err)
+	e := httpexpect.New(t, ts.URL)
+	var userIDs []string
+	for i := range users {
+		rawID := e.POST("/user/").WithJSON(users[i]).Expect().Status(http.StatusOK).Body().Raw()
+		var id string
+		err := json.Unmarshal([]byte(rawID), &id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		userIDs = append(userIDs, id)
+		users[i].ID = id
 	}
-	if res.StatusCode != http.StatusOK {
-		t.Fatal("Cannot patch user")
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-	res, err = http.Get(ts.URL + "/user/test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var u entity.User
-	err = json.NewDecoder(res.Body).Decode(&u)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if u.Name != "test3" || u.Email != "test2" || u.ID != "test" || u.Info != "test2" {
-		t.Fatalf("Cannot post user %s", u)
-	}
-}
-
-func TestDeleteUser(t *testing.T) {
-	req, err := http.NewRequest(http.MethodDelete, ts.URL+"/user/test", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	client := http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.StatusCode != http.StatusOK {
-		t.Fatal("Cannot delete user")
-	}
-	res, err = http.Get(ts.URL + "/user/test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.StatusCode != http.StatusNotFound {
-		t.Fatal("Test user is not deleted")
+	//TODO: add some tests
+	for i := range userIDs {
+		e.DELETE("/user/" + userIDs[i]).Expect().Status(http.StatusOK)
 	}
 }

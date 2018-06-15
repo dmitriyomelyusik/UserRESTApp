@@ -14,7 +14,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-//Environment variables that needs to open database
+// Environment variables that needs to open database
 const (
 	DBNAME  = "DBNAME"
 	PGUSER  = "PGUSER"

@@ -1,3 +1,5 @@
+// Package handlers has methods to operate with client requests via http methods.
+// All of data are encoded via json and wroten to response.
 package handlers
 
 import (
@@ -13,13 +15,13 @@ import (
 	"github.com/gorilla/mux"
 )
 
-//Server uses controller methods to work with them together with http methods
+// Server uses controller methods to work with them together with http methods
 type Server struct {
 	Controller controller.User
 }
 
-//UserHandler handles GET /user/ method
-func (s Server) UserHandler() http.HandlerFunc {
+// UsersHandler handles GET /user/ method
+func (s Server) UsersHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		u, err := s.Controller.GetUsers()
 		if err != nil {
@@ -30,12 +32,12 @@ func (s Server) UserHandler() http.HandlerFunc {
 	}
 }
 
-//UserIDHandler handles GET /user/{id} method
-func (s Server) UserIDHandler() http.HandlerFunc {
+// UserHandler handles GET /user/{id} method
+func (s Server) UserHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		id := vars["id"]
-		u, err := s.Controller.GetUserByID(id)
+		u, err := s.Controller.GetUser(id)
 		if err != nil {
 			jsonError(w, err)
 			return
@@ -44,73 +46,82 @@ func (s Server) UserIDHandler() http.HandlerFunc {
 	}
 }
 
-//PostUserHandler handles POST /user/ method
-func (s Server) PostUserHandler() http.HandlerFunc {
+// CreateUserHandler handles POST /user/ method
+func (s Server) CreateUserHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var u entity.User
-		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
-			jsonResponse(w, err)
-		}
-		if err := s.Controller.PostUser(u); err != nil {
+		err := json.NewDecoder(r.Body).Decode(&u)
+		if err != nil {
 			jsonError(w, err)
+			return
 		}
-		w.WriteHeader(http.StatusOK)
+		id, err := s.Controller.CreateUser(u)
+		if err != nil {
+			jsonError(w, err)
+			return
+		}
+		jsonResponse(w, id)
 	}
 }
 
-//PutUserByIDHandler handles PUT /user/{id} method
-func (s Server) PutUserByIDHandler() http.HandlerFunc {
+// PutUserHandler handles PUT /user/{id} method
+func (s Server) PutUserHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var u entity.User
 		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
-			jsonResponse(w, err)
+			jsonError(w, err)
+			return
 		}
 		vars := mux.Vars(r)
 		u.ID = vars["id"]
-		if err := s.Controller.PutUserByID(u); err != nil {
+		if err := s.Controller.UpdateUser(u); err != nil {
 			jsonError(w, err)
+			return
 		}
 		w.WriteHeader(http.StatusOK)
 	}
 }
 
-//DeleteUserByIDHandler handles DELETE /user/{id} method
-func (s Server) DeleteUserByIDHandler() http.HandlerFunc {
+// DeleteUserHandler handles DELETE /user/{id} method
+func (s Server) DeleteUserHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		id := vars["id"]
-		if err := s.Controller.DeleteUserByID(id); err != nil {
+		if err := s.Controller.DeleteUser(id); err != nil {
 			jsonError(w, err)
+			return
 		}
 		w.WriteHeader(http.StatusOK)
 	}
 }
 
-//PatchUserByIDHandler handles PATCH /user/{id} method
-func (s Server) PatchUserByIDHandler() http.HandlerFunc {
+// PatchUserHandler handles PATCH /user/{id} method
+func (s Server) PatchUserHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		id := vars["id"]
 		changes := make(map[string]interface{})
 		if err := json.NewDecoder(r.Body).Decode(&changes); err != nil {
 			jsonError(w, err)
+			return
 		}
-		if err := s.Controller.PatchUserByID(changes, id); err != nil {
+		if err := s.Controller.UpdateUserFields(changes, id); err != nil {
 			jsonError(w, err)
+			return
 		}
 		w.WriteHeader(http.StatusOK)
 	}
 }
 
-//NewRouter returns router with configurated and handled pathes
+// NewRouter returns router with configurated and handled pathes
 func NewRouter(s Server) *mux.Router {
 	r := mux.NewRouter()
-	r.HandleFunc("/user/", s.UserHandler()).Methods("GET")
-	r.HandleFunc("/user/{id}", s.UserIDHandler()).Methods("GET")
-	r.HandleFunc("/user/", s.PostUserHandler()).Methods("POST")
-	r.HandleFunc("/user/{id}", s.PutUserByIDHandler()).Methods("PUT")
-	r.HandleFunc("/user/{id}", s.DeleteUserByIDHandler()).Methods("DELETE")
-	r.HandleFunc("/user/{id}", s.PatchUserByIDHandler()).Methods("PATCH")
+	r.HandleFunc("/user/", s.UsersHandler()).Methods("GET")
+	r.HandleFunc("/user/{id}", s.UserHandler()).Methods("GET")
+	r.HandleFunc("/user/", s.CreateUserHandler()).Methods("POST")
+	r.HandleFunc("/user/{id}", s.PutUserHandler()).Methods("PUT")
+	r.HandleFunc("/user/{id}", s.DeleteUserHandler()).Methods("DELETE")
+	r.HandleFunc("/user/{id}", s.PatchUserHandler()).Methods("PATCH")
 	return r
 }
 
@@ -136,6 +147,7 @@ func jsonError(w http.ResponseWriter, err error) {
 }
 
 func jsonResponse(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("content-type", "application/json")
 	encoder := json.NewEncoder(w)
 	if err := encoder.Encode(data); err != nil {
 		log.Println(err)

@@ -1,26 +1,28 @@
+// Package errors has custom wroten Error for convenience.
 package errors
 
 import "fmt"
 
-//Error is custom error struct for convenient handlers work
+// Error is custom error struct for convenient handlers work
 type Error struct {
-	Code    ErrCode
-	Message string
-	Info    interface{}
+	Code    ErrCode     `json:"code,omitempty"`
+	Message string      `json:"message,omitempty"`
+	Info    interface{} `json:"info,omitempty"`
 }
 
-//ErrCode is code of Error that specify its
+// ErrCode is code of Error that specify its
 type ErrCode string
 
-//All possible ErrCodes
+// All possible ErrCodes
 const (
-	UserNotFound       ErrCode = "UserNotFound"
-	UsersNotFound      ErrCode = "UsersNotFound"
-	UnmarshalError     ErrCode = "UnmarshallError"
-	DatabaseQueryError ErrCode = "DatabaseQueryError"
-	UserExists         ErrCode = "UserExists"
-	NotFound           ErrCode = "NotFound"
-	UserFieldsError    ErrCode = "UserFieldsError"
+	UserNotFound       ErrCode = "userNotFound"
+	UsersNotFound      ErrCode = "usersNotFound"
+	UnmarshalError     ErrCode = "unmarshallError"
+	DatabaseQueryError ErrCode = "databaseQueryError"
+	UserExists         ErrCode = "userExists"
+	NotFound           ErrCode = "notFound"
+	UserFieldsError    ErrCode = "userFieldsError"
+	UnexpectedError    ErrCode = "unexpectedError"
 )
 
 func (e Error) Error() string {
